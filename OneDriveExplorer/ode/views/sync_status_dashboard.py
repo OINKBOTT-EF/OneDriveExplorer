@@ -28,6 +28,10 @@ from datetime import datetime
 import pandas as pd
 from pandastable import Table
 import logging
+from ode.helpers.report_ui_utils import (
+    ToolTip, InfoPanel, StatisticCard, ProgressBar,
+    format_number, format_percentage, get_health_color, get_health_status
+)
 
 log = logging.getLogger(__name__)
 
@@ -122,6 +126,7 @@ class SyncStatusDashboard(ttk.Frame):
         export_btn = ttk.Button(self.status_frame, text="Export Report (CSV)",
                                command=self.export_report)
         export_btn.pack(side=tk.RIGHT, padx=5)
+        ToolTip(export_btn, "Export sync status report to CSV format")
 
     def analyze_sync_status(self):
         """Analyze sync status from cache data"""
@@ -289,28 +294,114 @@ class SyncStatusDashboard(ttk.Frame):
                          font=('Arial', 14, 'bold'))
         title.pack(pady=10)
 
-        # Summary statistics
+        # Info panel
+        info_panel = InfoPanel(
+            scrollable_frame,
+            title="Sync Status Dashboard",
+            message="Comprehensive analysis of OneDrive sync status, hydration, and file pin states.",
+            type="info",
+            details="This dashboard shows sync health, files not synced, sync errors, hydration status (downloaded vs online-only), and pinned files. Use the tabs below to explore specific categories."
+        )
+        info_panel.pack(fill=tk.X, padx=20, pady=(0, 10))
+
+        # Summary statistics using StatisticCard
         summary_frame = ttk.LabelFrame(scrollable_frame, text="Summary Statistics", padding=15)
         summary_frame.pack(fill=tk.X, padx=20, pady=10)
 
-        stats_data = [
-            ("Total Files:", self.stats['total_files']),
-            ("Total Folders:", self.stats['total_folders']),
-            ("Not Synced Items:", f"{self.stats['not_synced_count']} ({self.stats['not_synced_count']/max(self.stats['total_files']+self.stats['total_folders'],1)*100:.1f}%)"),
-            ("Sync Errors:", self.stats['sync_errors_count']),
-            ("Hydrated Files:", f"{self.stats['hydrated_count']} ({self.stats['hydrated_count']/max(self.stats['total_files'],1)*100:.1f}%)"),
-            ("Not Hydrated:", f"{self.stats['not_hydrated_count']} ({self.stats['not_hydrated_count']/max(self.stats['total_files'],1)*100:.1f}%)"),
-            ("Pinned Files:", self.stats['pinned_count']),
-        ]
+        stats_grid = ttk.Frame(summary_frame)
+        stats_grid.pack(fill=tk.X)
 
-        for i, (label, value) in enumerate(stats_data):
-            row = i // 2
-            col = (i % 2) * 2
+        total_items = self.stats['total_files'] + self.stats['total_folders']
 
-            ttk.Label(summary_frame, text=label, font=('Arial', 10, 'bold')).grid(
-                row=row, column=col, sticky='w', padx=10, pady=5)
-            ttk.Label(summary_frame, text=str(value), font=('Arial', 10)).grid(
-                row=row, column=col+1, sticky='w', padx=(0, 20), pady=5)
+        # Row 1: Files, Folders, Total
+        card1 = StatisticCard(
+            stats_grid,
+            title="Total Files",
+            value=format_number(self.stats['total_files']),
+            subtitle=format_percentage(self.stats['total_files'], total_items, 1) + " of items" if total_items > 0 else "",
+            icon="📄"
+        )
+        card1.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
+        ToolTip(card1, "Total number of files in OneDrive")
+
+        card2 = StatisticCard(
+            stats_grid,
+            title="Total Folders",
+            value=format_number(self.stats['total_folders']),
+            subtitle=format_percentage(self.stats['total_folders'], total_items, 1) + " of items" if total_items > 0 else "",
+            icon="📁"
+        )
+        card2.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
+        ToolTip(card2, "Total number of folders in OneDrive")
+
+        card3 = StatisticCard(
+            stats_grid,
+            title="Total Items",
+            value=format_number(total_items),
+            subtitle="Files + Folders",
+            icon="📦"
+        )
+        card3.grid(row=0, column=2, padx=5, pady=5, sticky='ew')
+        ToolTip(card3, "Combined total of files and folders")
+
+        # Row 2: Not Synced, Errors, Hydration
+        not_synced_pct = format_percentage(self.stats['not_synced_count'], total_items, 1) if total_items > 0 else "0.0%"
+        card4 = StatisticCard(
+            stats_grid,
+            title="Not Synced",
+            value=format_number(self.stats['not_synced_count']),
+            subtitle=f"{not_synced_pct} of items",
+            icon="⚠️"
+        )
+        card4.grid(row=1, column=0, padx=5, pady=5, sticky='ew')
+        ToolTip(card4, "Items not synced (online-only or not linked)")
+
+        card5 = StatisticCard(
+            stats_grid,
+            title="Sync Errors",
+            value=format_number(self.stats['sync_errors_count']),
+            subtitle="Files with errors",
+            icon="❌"
+        )
+        card5.grid(row=1, column=1, padx=5, pady=5, sticky='ew')
+        ToolTip(card5, "Files that failed to sync")
+
+        hydrated_pct = format_percentage(self.stats['hydrated_count'], self.stats['total_files'], 1) if self.stats['total_files'] > 0 else "0.0%"
+        card6 = StatisticCard(
+            stats_grid,
+            title="Hydrated Files",
+            value=format_number(self.stats['hydrated_count']),
+            subtitle=f"{hydrated_pct} downloaded",
+            icon="⬇️"
+        )
+        card6.grid(row=1, column=2, padx=5, pady=5, sticky='ew')
+        ToolTip(card6, "Files downloaded to local disk")
+
+        # Row 3: Not Hydrated, Pinned
+        not_hydrated_pct = format_percentage(self.stats['not_hydrated_count'], self.stats['total_files'], 1) if self.stats['total_files'] > 0 else "0.0%"
+        card7 = StatisticCard(
+            stats_grid,
+            title="Online Only",
+            value=format_number(self.stats['not_hydrated_count']),
+            subtitle=f"{not_hydrated_pct} not downloaded",
+            icon="☁️"
+        )
+        card7.grid(row=2, column=0, padx=5, pady=5, sticky='ew')
+        ToolTip(card7, "Files stored online only (not downloaded)")
+
+        card8 = StatisticCard(
+            stats_grid,
+            title="Pinned Files",
+            value=format_number(self.stats['pinned_count']),
+            subtitle="Always kept on device",
+            icon="📌"
+        )
+        card8.grid(row=2, column=1, padx=5, pady=5, sticky='ew')
+        ToolTip(card8, "Files pinned to always stay on local device")
+
+        # Configure grid columns
+        for i in range(3):
+            stats_grid.grid_columnconfigure(i, weight=1)
 
         # Status breakdown visualization
         if self.status_counts:
@@ -340,7 +431,7 @@ class SyncStatusDashboard(ttk.Frame):
                 ttk.Label(row_frame, text=f"{bar} {percentage:.1f}%",
                          font=('Arial', 8), foreground='blue').pack(side=tk.LEFT)
 
-        # Health indicator
+        # Health indicator using enhanced components
         health_frame = ttk.LabelFrame(scrollable_frame, text="Sync Health", padding=15)
         health_frame.pack(fill=tk.X, padx=20, pady=10)
 
@@ -349,33 +440,59 @@ class SyncStatusDashboard(ttk.Frame):
         if total_items > 0:
             synced_items = total_items - self.stats['not_synced_count'] - self.stats['sync_errors_count']
             health_score = (synced_items / total_items) * 100
+            health_status = get_health_status(health_score)
 
-            if health_score >= 90:
-                health_status = "Excellent"
-                health_color = "green"
-            elif health_score >= 70:
-                health_status = "Good"
-                health_color = "blue"
-            elif health_score >= 50:
-                health_status = "Fair"
-                health_color = "orange"
-            else:
-                health_status = "Poor"
-                health_color = "red"
+            # Health score card
+            health_card = StatisticCard(
+                health_frame,
+                title="Overall Sync Health",
+                value=f"{health_score:.1f}%",
+                subtitle=health_status,
+                icon="❤️"
+            )
+            health_card.pack(fill=tk.X, pady=(0, 10))
+            ToolTip(health_card, f"{format_number(synced_items)} of {format_number(total_items)} items synced successfully")
 
-            health_label = ttk.Label(health_frame,
-                                    text=f"Health Score: {health_score:.1f}% - {health_status}",
-                                    font=('Arial', 12, 'bold'))
-            health_label.pack()
+            # Progress bar for sync health
+            health_bar = ProgressBar(
+                health_frame,
+                value=synced_items,
+                maximum=total_items,
+                label="Sync Progress:",
+                show_percentage=True
+            )
+            health_bar.pack(fill=tk.X, pady=(0, 15))
+            ToolTip(health_bar, f"Synced items: {format_number(synced_items)} / {format_number(total_items)}")
 
-            # Recommendations
+            # Recommendations using InfoPanel
             if self.stats['sync_errors_count'] > 0:
-                ttk.Label(health_frame, text=f"⚠ {self.stats['sync_errors_count']} files have sync errors - check Sync Errors tab",
-                         font=('Arial', 9), foreground='red').pack(pady=2)
+                error_panel = InfoPanel(
+                    health_frame,
+                    title="Sync Errors Detected",
+                    message=f"{format_number(self.stats['sync_errors_count'])} files have sync errors",
+                    type="error",
+                    details="Check the 'Sync Errors' tab to view detailed information about files that failed to sync."
+                )
+                error_panel.pack(fill=tk.X, pady=3)
 
             if self.stats['not_synced_count'] > total_items * 0.1:
-                ttk.Label(health_frame, text=f"ℹ {self.stats['not_synced_count']} items not synced - may be online-only",
-                         font=('Arial', 9), foreground='orange').pack(pady=2)
+                warning_panel = InfoPanel(
+                    health_frame,
+                    title="Items Not Synced",
+                    message=f"{format_number(self.stats['not_synced_count'])} items are not synced",
+                    type="warning",
+                    details="These may be online-only files or items not linked to OneDrive. Check the 'Not Synced' tab for details."
+                )
+                warning_panel.pack(fill=tk.X, pady=3)
+
+            if health_score >= 90 and self.stats['sync_errors_count'] == 0:
+                success_panel = InfoPanel(
+                    health_frame,
+                    title="Excellent Sync Health",
+                    message="Your OneDrive sync is working perfectly!",
+                    type="success"
+                )
+                success_panel.pack(fill=tk.X, pady=3)
 
     def populate_not_synced(self):
         """Populate not synced files tab"""

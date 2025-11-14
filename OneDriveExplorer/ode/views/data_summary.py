@@ -27,6 +27,10 @@ from tkinter import ttk
 from datetime import datetime
 import pandas as pd
 import logging
+from ode.helpers.report_ui_utils import (
+    ToolTip, InfoPanel, StatisticCard, ProgressBar,
+    format_number, format_bytes, format_percentage
+)
 
 log = logging.getLogger(__name__)
 
@@ -78,6 +82,16 @@ class DataSummaryFrame(ttk.Frame):
                                     text=f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                                     font=('Arial', 10))
         timestamp_label.pack(side=tk.RIGHT)
+
+        # Info panel
+        info_panel = InfoPanel(
+            self.scrollable_frame,
+            title="Data Summary Dashboard",
+            message="This dashboard provides an overview of all loaded OneDrive data sources, account information, and key statistics.",
+            type="info",
+            details="The dashboard shows which databases were successfully loaded, account scope information, file/folder counts, storage usage, and data completeness indicators. Use this to verify your forensic data is complete before analysis."
+        )
+        info_panel.pack(fill=tk.X, padx=20, pady=(0, 10))
 
         # Create sections
         self.create_data_sources_section()
@@ -188,15 +202,11 @@ class DataSummaryFrame(ttk.Frame):
                     ttk.Label(self.account_content, text=f"Scope: {scope_name} (ID: {scope_id})",
                              font=('Arial', 10)).pack(anchor='w', pady=2, padx=10)
 
-            # Statistics
-            stats_grid = ttk.Frame(self.stats_content)
-            stats_grid.pack(fill=tk.X)
-
             # Count files and folders
             total_items = 0
             total_files = 0
             total_folders = 0
-            total_size = 0
+            total_size_kb = 0
             hydrated_files = 0
             shared_items = 0
 
@@ -216,7 +226,7 @@ class DataSummaryFrame(ttk.Frame):
                         if isinstance(size_str, str) and 'KB' in size_str:
                             try:
                                 size_kb = int(size_str.replace('KB', '').replace(',', '').strip())
-                                total_size += size_kb
+                                total_size_kb += size_kb
                             except:
                                 pass
 
@@ -233,45 +243,159 @@ class DataSummaryFrame(ttk.Frame):
 
             deleted_items = len(self.rbin_df) if not self.rbin_df.empty else 0
 
-            # Display statistics in grid
-            stats_data = [
-                ("Total Items:", total_items),
-                ("Files:", total_files),
-                ("Folders:", total_folders),
-                ("Total Size:", f"{total_size:,} KB ({total_size / 1024:.2f} MB)"),
-                ("Hydrated Files:", f"{hydrated_files} ({(hydrated_files/total_files*100 if total_files > 0 else 0):.1f}%)"),
-                ("Shared Items:", shared_items),
-                ("Deleted Items:", deleted_items)
-            ]
+            # Statistics using StatisticCard components
+            stats_grid = ttk.Frame(self.stats_content)
+            stats_grid.pack(fill=tk.X, expand=True)
 
-            for i, (label, value) in enumerate(stats_data):
-                row_num = i // 2
-                col_num = (i % 2) * 2
+            # Row 1: Total items, files, folders
+            card1 = StatisticCard(
+                stats_grid,
+                title="Total Items",
+                value=format_number(total_items),
+                subtitle="Files and Folders",
+                icon="📦"
+            )
+            card1.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
+            ToolTip(card1, "Total number of files and folders in loaded data")
 
-                ttk.Label(stats_grid, text=label, font=('Arial', 10, 'bold')).grid(
-                    row=row_num, column=col_num, sticky='w', padx=(10, 5), pady=5)
-                ttk.Label(stats_grid, text=str(value), font=('Arial', 10)).grid(
-                    row=row_num, column=col_num+1, sticky='w', padx=(0, 20), pady=5)
+            card2 = StatisticCard(
+                stats_grid,
+                title="Files",
+                value=format_number(total_files),
+                subtitle=format_percentage(total_files, total_items, 1) + " of items" if total_items > 0 else "0% of items",
+                icon="📄"
+            )
+            card2.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
+            ToolTip(card2, "Number of files found in OneDrive data")
 
-            # Data Completeness
+            card3 = StatisticCard(
+                stats_grid,
+                title="Folders",
+                value=format_number(total_folders),
+                subtitle=format_percentage(total_folders, total_items, 1) + " of items" if total_items > 0 else "0% of items",
+                icon="📁"
+            )
+            card3.grid(row=0, column=2, padx=5, pady=5, sticky='ew')
+            ToolTip(card3, "Number of folders found in OneDrive data")
+
+            # Row 2: Storage, hydrated, shared
+            total_size_bytes = total_size_kb * 1024
+            card4 = StatisticCard(
+                stats_grid,
+                title="Total Storage",
+                value=format_bytes(total_size_bytes),
+                subtitle=f"{format_number(total_size_kb)} KB",
+                icon="💾"
+            )
+            card4.grid(row=1, column=0, padx=5, pady=5, sticky='ew')
+            ToolTip(card4, "Total storage used by all files")
+
+            hydration_pct = format_percentage(hydrated_files, total_files, 1) if total_files > 0 else "0.0%"
+            card5 = StatisticCard(
+                stats_grid,
+                title="Hydrated Files",
+                value=format_number(hydrated_files),
+                subtitle=f"{hydration_pct} downloaded",
+                icon="⬇️"
+            )
+            card5.grid(row=1, column=1, padx=5, pady=5, sticky='ew')
+            ToolTip(card5, "Files that were downloaded to local disk (hydrated)")
+
+            card6 = StatisticCard(
+                stats_grid,
+                title="Shared Items",
+                value=format_number(shared_items),
+                subtitle=format_percentage(shared_items, total_items, 1) + " of items" if total_items > 0 else "0% of items",
+                icon="🔗"
+            )
+            card6.grid(row=1, column=2, padx=5, pady=5, sticky='ew')
+            ToolTip(card6, "Items shared with other users")
+
+            # Row 3: Deleted items
+            card7 = StatisticCard(
+                stats_grid,
+                title="Deleted Items",
+                value=format_number(deleted_items),
+                subtitle="From SafeDelete.db",
+                icon="🗑️"
+            )
+            card7.grid(row=2, column=0, padx=5, pady=5, sticky='ew')
+            ToolTip(card7, "Items found in deletion history (SafeDelete database)")
+
+            # Configure column weights for even distribution
+            for i in range(3):
+                stats_grid.grid_columnconfigure(i, weight=1)
+
+            # Add hydration progress bar
+            if total_files > 0:
+                hydration_frame = ttk.Frame(self.stats_content)
+                hydration_frame.pack(fill=tk.X, pady=(15, 0))
+
+                ttk.Label(hydration_frame, text="Hydration Progress:",
+                         font=('Arial', 10, 'bold')).pack(anchor='w', pady=(0, 5))
+
+                progress = ProgressBar(
+                    hydration_frame,
+                    value=hydrated_files,
+                    maximum=total_files,
+                    label="Downloaded Files:",
+                    show_percentage=True
+                )
+                progress.pack(fill=tk.X)
+                ToolTip(progress, f"{hydrated_files} of {total_files} files were downloaded to disk")
+
+            # Data Completeness using InfoPanel
+            has_timestamps = self.check_timestamp_completeness()
+            has_deletions = not self.rbin_df.empty
+            has_hydration = hydrated_files > 0
+            has_sharing = shared_items > 0
+
+            completeness_grid = ttk.Frame(self.completeness_content)
+            completeness_grid.pack(fill=tk.X)
+
+            # Calculate overall completeness score
+            completeness_score = sum([has_timestamps, has_deletions, has_hydration, has_sharing])
+            total_checks = 4
+            completeness_pct = (completeness_score / total_checks) * 100
+
+            # Completeness summary card
+            completeness_card = StatisticCard(
+                completeness_grid,
+                title="Overall Data Completeness",
+                value=f"{completeness_score}/{total_checks}",
+                subtitle=f"{completeness_pct:.0f}% complete",
+                icon="✓"
+            )
+            completeness_card.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky='ew')
+            ToolTip(completeness_card, "Number of data categories available out of 4 total categories")
+
+            # Individual completeness indicators
             completeness_items = [
-                ("Timestamp Data", self.check_timestamp_completeness(), "✓" if self.check_timestamp_completeness() else "⚠"),
-                ("Deletion History", not self.rbin_df.empty, "✓" if not self.rbin_df.empty else "⚠"),
-                ("Hydration Data", hydrated_files > 0, "✓" if hydrated_files > 0 else "⚠"),
-                ("Sharing Information", shared_items > 0, "✓" if shared_items > 0 else "⚠")
+                ("Timestamp Data", has_timestamps, "File modification, creation, and access timestamps"),
+                ("Deletion History", has_deletions, "SafeDelete.db with deletion tracking"),
+                ("Hydration Data", has_hydration, "Download history (firstHydrationTime)"),
+                ("Sharing Information", has_sharing, "Files shared with other users")
             ]
 
-            for i, (item, complete, icon) in enumerate(completeness_items):
-                status_text = "Available" if complete else "Limited or Unavailable"
-                color = "green" if complete else "orange"
+            row = 1
+            for item, complete, tooltip_text in completeness_items:
+                icon = "✓" if complete else "⚠"
+                status_text = "Available" if complete else "Limited/Unavailable"
+                panel_type = "success" if complete else "warning"
 
-                item_frame = ttk.Frame(self.completeness_content)
-                item_frame.pack(fill=tk.X, pady=3)
+                panel = InfoPanel(
+                    completeness_grid,
+                    title=f"{icon} {item}",
+                    message=status_text,
+                    type=panel_type
+                )
+                panel.grid(row=row, column=0, columnspan=2, padx=5, pady=3, sticky='ew')
+                ToolTip(panel, tooltip_text)
+                row += 1
 
-                ttk.Label(item_frame, text=f"{icon} {item}:", font=('Arial', 10, 'bold')).pack(
-                    side=tk.LEFT, padx=10)
-                ttk.Label(item_frame, text=status_text, font=('Arial', 10)).pack(
-                    side=tk.LEFT)
+            # Configure column weights
+            completeness_grid.grid_columnconfigure(0, weight=1)
+            completeness_grid.grid_columnconfigure(1, weight=1)
 
         except Exception as e:
             log.error(f"Error populating summary: {e}")

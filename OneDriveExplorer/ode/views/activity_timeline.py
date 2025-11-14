@@ -29,6 +29,10 @@ from datetime import datetime
 import pandas as pd
 from pandastable import Table, TableModel
 import logging
+from ode.helpers.report_ui_utils import (
+    ToolTip, DateRangePicker, SearchBox, FilterCheckboxGroup,
+    InfoPanel, StatisticCard, format_number
+)
 
 log = logging.getLogger(__name__)
 
@@ -65,6 +69,16 @@ class ActivityTimelineFrame(ttk.Frame):
         self.paned = ttk.PanedWindow(self, orient=tk.VERTICAL)
         self.paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
+        # Info panel at top
+        info_panel = InfoPanel(
+            self.paned,
+            title="Activity Timeline",
+            message="View chronological history of all OneDrive activities including syncs, downloads, deletions, and access events.",
+            type="tip",
+            details="Use the filters below to narrow down activities by type, date range, or search text. Click on preset date ranges for quick filtering. Export your filtered results to CSV or HTML format."
+        )
+        self.paned.add(info_panel, weight=0)
+
         # Top frame for filters and controls
         self.filter_frame = ttk.LabelFrame(self.paned, text="Filters & Controls", padding=10)
         self.paned.add(self.filter_frame, weight=0)
@@ -88,50 +102,60 @@ class ActivityTimelineFrame(ttk.Frame):
 
     def create_filter_controls(self):
         """Create filter controls"""
-        # Row 1: Activity type filters
+        # Row 1: Activity type filters using FilterCheckboxGroup
         filter_row1 = ttk.Frame(self.filter_frame)
-        filter_row1.pack(fill=tk.X, pady=(0, 5))
+        filter_row1.pack(fill=tk.X, pady=(0, 10))
 
-        ttk.Label(filter_row1, text="Activity Types:", font=('Arial', 9, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
+        self.activity_filter = FilterCheckboxGroup(
+            filter_row1,
+            title="Activity Types:",
+            options=self.activity_types,
+            callback=self.apply_filters,
+            columns=6
+        )
+        self.activity_filter.pack(fill=tk.X)
 
-        self.activity_vars = {}
-        for activity_type, label in self.activity_types.items():
-            var = tk.BooleanVar(value=True)
-            self.activity_vars[activity_type] = var
-            cb = ttk.Checkbutton(filter_row1, text=label, variable=var, command=self.apply_filters)
-            cb.pack(side=tk.LEFT, padx=5)
-
-        # Row 2: Date range filters
+        # Row 2: Date range filters using DateRangePicker
         filter_row2 = ttk.Frame(self.filter_frame)
-        filter_row2.pack(fill=tk.X, pady=5)
+        filter_row2.pack(fill=tk.X, pady=(0, 10))
 
-        ttk.Label(filter_row2, text="Date Range:", font=('Arial', 9, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Label(filter_row2, text="Date Range:", font=('Arial', 9, 'bold')).pack(anchor='w', pady=(0, 5))
+        self.date_picker = DateRangePicker(filter_row2, callback=self.apply_filters)
+        self.date_picker.pack(fill=tk.X)
 
-        ttk.Label(filter_row2, text="From:").pack(side=tk.LEFT, padx=(0, 5))
-        self.date_from = ttk.Entry(filter_row2, width=20)
-        self.date_from.pack(side=tk.LEFT, padx=(0, 10))
-        self.date_from.insert(0, "YYYY-MM-DD HH:MM:SS")
-
-        ttk.Label(filter_row2, text="To:").pack(side=tk.LEFT, padx=(0, 5))
-        self.date_to = ttk.Entry(filter_row2, width=20)
-        self.date_to.pack(side=tk.LEFT, padx=(0, 10))
-        self.date_to.insert(0, "YYYY-MM-DD HH:MM:SS")
-
-        ttk.Button(filter_row2, text="Apply Date Filter", command=self.apply_filters).pack(side=tk.LEFT, padx=5)
-        ttk.Button(filter_row2, text="Clear Filters", command=self.clear_filters).pack(side=tk.LEFT, padx=5)
-
-        # Row 3: Search and export
+        # Row 3: Search and export using SearchBox
         filter_row3 = ttk.Frame(self.filter_frame)
-        filter_row3.pack(fill=tk.X, pady=(5, 0))
+        filter_row3.pack(fill=tk.X, pady=(0, 10))
 
-        ttk.Label(filter_row3, text="Search:", font=('Arial', 9, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
-        self.search_var = tk.StringVar()
-        self.search_var.trace('w', lambda *args: self.apply_filters())
-        self.search_entry = ttk.Entry(filter_row3, textvariable=self.search_var, width=40)
-        self.search_entry.pack(side=tk.LEFT, padx=(0, 10))
+        self.search_box = SearchBox(
+            filter_row3,
+            callback=self.on_search,
+            placeholder="Search by name, path, or details...",
+            width=50
+        )
+        self.search_box.pack(side=tk.LEFT, padx=(0, 20))
 
-        ttk.Button(filter_row3, text="Export Timeline (CSV)", command=self.export_csv).pack(side=tk.LEFT, padx=5)
-        ttk.Button(filter_row3, text="Export Timeline (HTML)", command=self.export_html).pack(side=tk.LEFT, padx=5)
+        clear_btn = ttk.Button(filter_row3, text="Clear All Filters", command=self.clear_filters)
+        clear_btn.pack(side=tk.LEFT, padx=5)
+        ToolTip(clear_btn, "Reset all filters and show all timeline events")
+
+        # Row 4: Export buttons
+        filter_row4 = ttk.Frame(self.filter_frame)
+        filter_row4.pack(fill=tk.X)
+
+        ttk.Label(filter_row4, text="Export:", font=('Arial', 9, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
+
+        csv_btn = ttk.Button(filter_row4, text="Export to CSV", command=self.export_csv)
+        csv_btn.pack(side=tk.LEFT, padx=5)
+        ToolTip(csv_btn, "Export filtered timeline to CSV format for spreadsheet analysis")
+
+        html_btn = ttk.Button(filter_row4, text="Export to HTML", command=self.export_html)
+        html_btn.pack(side=tk.LEFT, padx=5)
+        ToolTip(html_btn, "Export filtered timeline to HTML format for web viewing")
+
+    def on_search(self, search_text):
+        """Handle search callback"""
+        self.apply_filters()
 
     def build_timeline(self):
         """Build the chronological timeline from all data sources"""
@@ -280,31 +304,30 @@ class ActivityTimelineFrame(ttk.Frame):
         try:
             filtered = self.timeline_df.copy()
 
-            # Filter by activity type
-            selected_types = [act_type for act_type, var in self.activity_vars.items() if var.get()]
+            # Filter by activity type using FilterCheckboxGroup
+            selected_types = self.activity_filter.get_selected()
             if selected_types:
                 filtered = filtered[filtered['ActivityType'].isin(selected_types)]
 
-            # Filter by date range
-            date_from_str = self.date_from.get()
-            date_to_str = self.date_to.get()
+            # Filter by date range using DateRangePicker
+            date_from_str, date_to_str = self.date_picker.get_dates()
 
-            if date_from_str and date_from_str != "YYYY-MM-DD HH:MM:SS":
+            if date_from_str:
                 try:
                     date_from = pd.to_datetime(date_from_str)
                     filtered = filtered[filtered['Timestamp'] >= date_from]
                 except:
                     pass
 
-            if date_to_str and date_to_str != "YYYY-MM-DD HH:MM:SS":
+            if date_to_str:
                 try:
                     date_to = pd.to_datetime(date_to_str)
                     filtered = filtered[filtered['Timestamp'] <= date_to]
                 except:
                     pass
 
-            # Filter by search term
-            search_term = self.search_var.get().lower()
+            # Filter by search term using SearchBox
+            search_term = self.search_box.get_search_text().lower()
             if search_term:
                 mask = (
                     filtered['Name'].str.lower().str.contains(search_term, na=False) |
@@ -323,18 +346,14 @@ class ActivityTimelineFrame(ttk.Frame):
 
     def clear_filters(self):
         """Clear all filters"""
-        # Reset activity type checkboxes
-        for var in self.activity_vars.values():
-            var.set(True)
+        # Reset activity type filters
+        self.activity_filter.select_all()
 
-        # Clear date fields
-        self.date_from.delete(0, tk.END)
-        self.date_from.insert(0, "YYYY-MM-DD HH:MM:SS")
-        self.date_to.delete(0, tk.END)
-        self.date_to.insert(0, "YYYY-MM-DD HH:MM:SS")
+        # Clear date range
+        self.date_picker.clear_dates()
 
         # Clear search
-        self.search_var.set('')
+        self.search_box.clear()
 
         # Reset to full dataset
         self.filtered_df = self.timeline_df.copy()
@@ -362,7 +381,7 @@ class ActivityTimelineFrame(ttk.Frame):
                      font=('Arial', 12)).pack(pady=20)
 
     def update_statistics(self):
-        """Update the statistics panel"""
+        """Update the statistics panel using StatisticCard components"""
         # Clear existing stats
         for widget in self.stats_frame.winfo_children():
             widget.destroy()
@@ -371,24 +390,65 @@ class ActivityTimelineFrame(ttk.Frame):
             # Calculate statistics
             stats = self.filtered_df['ActivityType'].value_counts()
 
-            stats_text = ttk.Frame(self.stats_frame)
-            stats_text.pack(fill=tk.X)
+            # Create grid for statistic cards
+            cards_container = ttk.Frame(self.stats_frame)
+            cards_container.pack(fill=tk.X, expand=True)
 
-            ttk.Label(stats_text, text=f"Total Events: {len(self.filtered_df)}",
-                     font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=10)
+            # Total events card
+            total_card = StatisticCard(
+                cards_container,
+                title="Total Events",
+                value=format_number(len(self.filtered_df)),
+                subtitle="Filtered timeline events",
+                icon="📊"
+            )
+            total_card.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
 
+            # Activity type cards
+            activity_icons = {
+                'MODIFIED': '🔄',
+                'CREATED': '📁',
+                'ACCESSED': '👁️',
+                'DOWNLOADED': '⬇️',
+                'DELETED': '🗑️',
+                'SHARED': '🔗'
+            }
+
+            col = 1
             for activity_type, count in stats.items():
-                label = self.activity_types.get(activity_type, activity_type)
-                ttk.Label(stats_text, text=f"{label}: {count}",
-                         font=('Arial', 10)).pack(side=tk.LEFT, padx=10)
+                label = self.activity_types.get(activity_type, activity_type).replace(activity_icons.get(activity_type, ''), '').strip()
+                icon = activity_icons.get(activity_type, '')
 
-            # Date range
+                card = StatisticCard(
+                    cards_container,
+                    title=label,
+                    value=format_number(count),
+                    subtitle=f"{(count/len(self.filtered_df)*100):.1f}% of events",
+                    icon=icon
+                )
+                card.grid(row=0, column=col, padx=5, pady=5, sticky='ew')
+                col += 1
+
+            # Configure column weights for even distribution
+            for i in range(col):
+                cards_container.grid_columnconfigure(i, weight=1)
+
+            # Date range info
             if len(self.filtered_df) > 0:
                 earliest = self.filtered_df['Timestamp'].min()
                 latest = self.filtered_df['Timestamp'].max()
-                date_range = f"Date Range: {earliest.strftime('%Y-%m-%d')} to {latest.strftime('%Y-%m-%d')}"
-                ttk.Label(stats_text, text=date_range,
-                         font=('Arial', 10)).pack(side=tk.LEFT, padx=10)
+
+                date_frame = ttk.Frame(self.stats_frame)
+                date_frame.pack(fill=tk.X, pady=(10, 0))
+
+                date_card = StatisticCard(
+                    date_frame,
+                    title="Date Range",
+                    value=f"{earliest.strftime('%Y-%m-%d')} to {latest.strftime('%Y-%m-%d')}",
+                    subtitle=f"{(latest - earliest).days} days of activity",
+                    icon="📅"
+                )
+                date_card.pack(fill=tk.X, padx=5)
         else:
             ttk.Label(self.stats_frame, text="No statistics available",
                      font=('Arial', 10)).pack()
