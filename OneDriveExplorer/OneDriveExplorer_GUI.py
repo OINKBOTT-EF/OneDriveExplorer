@@ -84,6 +84,7 @@ from ode.views.collaboration_report import CollaborationReportFrame
 from ode.views.sync_status_dashboard import SyncStatusDashboard
 from ode.views.file_analytics import FileAnalyticsFrame
 from ode.views.duplicate_detection import DuplicateDetectionFrame
+from ode.views.file_lifecycle_report import FileLifecycleFrame
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -4848,7 +4849,20 @@ def parse_results(od_settings, filename, key, start, x, reghive, recbin, od_list
             duplicate_view.pack(fill=tk.BOTH, expand=True)
             tv_frame.add(duplicate_frame, text='🔍 Duplicates  ')
 
-            logging.info("Added all enhanced reporting tabs: Data Summary, Activity Timeline, Sync Status, File Analytics, Collaboration, Duplicates")
+            # Create File Lifecycle Report tab
+            value_label['text'] = "Creating File Lifecycle Report..."
+            lifecycle_frame = ttk.Frame(tv_frame)
+            lifecycle_view = FileLifecycleFrame(
+                lifecycle_frame,
+                cache_data=cache,
+                rbin_df=rbin_df if rbin_df is not None else pd.DataFrame(),
+                graphMetadata=graphMetadata,
+                fileusage_data=fus if fus else None
+            )
+            lifecycle_view.pack(fill=tk.BOTH, expand=True)
+            tv_frame.add(lifecycle_frame, text='📋 Lifecycle  ')
+
+            logging.info("Added all enhanced reporting tabs: Data Summary, Activity Timeline, Sync Status, File Analytics, Collaboration, Duplicates, Lifecycle")
         except Exception as e:
             logging.error(f"Error creating enhanced views: {e}")
             import traceback

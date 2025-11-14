@@ -79,6 +79,7 @@ a = Analysis(
         'ode.views.sync_status_dashboard',
         'ode.views.file_analytics',
         'ode.views.duplicate_detection',
+        'ode.views.file_lifecycle_report',
 
         # Utils
         'ode.utils',

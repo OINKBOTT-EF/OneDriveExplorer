@@ -213,6 +213,7 @@ if "%1"=="onefile" (
         --hidden-import=ode.views.sync_status_dashboard ^
         --hidden-import=ode.views.file_analytics ^
         --hidden-import=ode.views.duplicate_detection ^
+        --hidden-import=ode.views.file_lifecycle_report ^
         --exclude-module=PyQt5 ^
         --exclude-module=PyQt6 ^
         --exclude-module=PySide2 ^
@@ -247,6 +248,7 @@ if "%1"=="onefile" (
             --hidden-import=ode.views.sync_status_dashboard ^
             --hidden-import=ode.views.file_analytics ^
             --hidden-import=ode.views.duplicate_detection ^
+            --hidden-import=ode.views.file_lifecycle_report ^
             --exclude-module=PyQt5 ^
             --exclude-module=PyQt6 ^
             --exclude-module=PySide2 ^
