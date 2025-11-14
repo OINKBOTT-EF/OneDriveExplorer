@@ -83,6 +83,7 @@ from ode.views.data_summary import DataSummaryFrame
 from ode.views.collaboration_report import CollaborationReportFrame
 from ode.views.sync_status_dashboard import SyncStatusDashboard
 from ode.views.file_analytics import FileAnalyticsFrame
+from ode.views.duplicate_detection import DuplicateDetectionFrame
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -4836,7 +4837,18 @@ def parse_results(od_settings, filename, key, start, x, reghive, recbin, od_list
             collab_view.pack(fill=tk.BOTH, expand=True)
             tv_frame.add(collab_frame, text='👥 Collaboration  ')
 
-            logging.info("Added all enhanced reporting tabs: Data Summary, Activity Timeline, Sync Status, File Analytics, Collaboration")
+            # Create Duplicate Detection tab
+            value_label['text'] = "Creating Duplicate Detection..."
+            duplicate_frame = ttk.Frame(tv_frame)
+            duplicate_view = DuplicateDetectionFrame(
+                duplicate_frame,
+                cache_data=cache,
+                hash_algorithm=getattr(od_settings, 'localHashAlgorithm', 'SHA1') if od_settings else 'SHA1'
+            )
+            duplicate_view.pack(fill=tk.BOTH, expand=True)
+            tv_frame.add(duplicate_frame, text='🔍 Duplicates  ')
+
+            logging.info("Added all enhanced reporting tabs: Data Summary, Activity Timeline, Sync Status, File Analytics, Collaboration, Duplicates")
         except Exception as e:
             logging.error(f"Error creating enhanced views: {e}")
             import traceback

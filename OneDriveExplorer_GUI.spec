@@ -78,6 +78,7 @@ a = Analysis(
         'ode.views.collaboration_report',
         'ode.views.sync_status_dashboard',
         'ode.views.file_analytics',
+        'ode.views.duplicate_detection',
 
         # Utils
         'ode.utils',
