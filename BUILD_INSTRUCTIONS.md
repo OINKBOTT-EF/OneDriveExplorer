@@ -218,6 +218,38 @@ REM Or install specific missing module
 python -m pip install <module-name>
 ```
 
+#### Issue: "ModuleNotFoundError: No module named 'matplotlib'"
+**Solution:**
+- This happens when matplotlib is excluded but pandastable requires it
+- **DO NOT** exclude matplotlib from the build
+- Verify in `OneDriveExplorer_GUI.spec`:
+```python
+excludes=[
+    # NOTE: matplotlib is required by pandastable.plotting, do not exclude
+    # 'matplotlib',  <-- DO NOT add this
+    'scipy',
+    'IPython',
+],
+```
+- Ensure matplotlib is in requirements.txt and installed
+- Clean rebuild: `build.bat clean` then `build.bat`
+
+#### Issue: "Multiple Qt bindings packages" error
+**Solution:**
+- Error: "attempting to collect multiple Qt bindings packages"
+- This happens when PyQt5, PyQt6, PySide2, or PySide6 are installed
+- OneDriveExplorer uses **Tkinter**, not Qt, so exclude all Qt packages
+- Already fixed in spec file:
+```python
+excludes=[
+    'PyQt5',
+    'PyQt6',
+    'PySide2',
+    'PySide6',
+],
+```
+- Clean rebuild: `build.bat clean` then `build.bat`
+
 #### Issue: "Import Error" when running executable
 **Solution:**
 - Check `hiddenimports` in .spec file
@@ -363,6 +395,12 @@ hiddenimports=[
 ```python
 excludes=[
     # NOTE: Do NOT exclude matplotlib - it's required by pandastable
+    # Qt bindings (app uses Tkinter, not Qt)
+    'PyQt5',
+    'PyQt6',
+    'PySide2',
+    'PySide6',
+    # Other large packages
     'scipy',
     'IPython',
     'jupyter',

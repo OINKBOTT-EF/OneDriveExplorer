@@ -212,6 +212,10 @@ if "%1"=="onefile" (
         --hidden-import=ode.views.collaboration_report ^
         --hidden-import=ode.views.sync_status_dashboard ^
         --hidden-import=ode.views.file_analytics ^
+        --exclude-module=PyQt5 ^
+        --exclude-module=PyQt6 ^
+        --exclude-module=PySide2 ^
+        --exclude-module=PySide6 ^
         --exclude-module=scipy ^
         --noconfirm ^
         "OneDriveExplorer\OneDriveExplorer_GUI.py"
@@ -241,6 +245,10 @@ if "%1"=="onefile" (
             --hidden-import=ode.views.collaboration_report ^
             --hidden-import=ode.views.sync_status_dashboard ^
             --hidden-import=ode.views.file_analytics ^
+            --exclude-module=PyQt5 ^
+            --exclude-module=PyQt6 ^
+            --exclude-module=PySide2 ^
+            --exclude-module=PySide6 ^
             --exclude-module=scipy ^
             --noconfirm ^
             "OneDriveExplorer\OneDriveExplorer_GUI.py"

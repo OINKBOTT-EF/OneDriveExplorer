@@ -110,6 +110,12 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[
         # NOTE: matplotlib is required by pandastable.plotting, do not exclude
+        # Qt bindings (app uses Tkinter, not Qt)
+        'PyQt5',       # Exclude Qt5 bindings
+        'PyQt6',       # Exclude Qt6 bindings
+        'PySide2',     # Exclude PySide2 bindings
+        'PySide6',     # Exclude PySide6 bindings
+        # Other large unused packages
         'scipy',       # Exclude if not used
         'IPython',     # Exclude if not used
         'jupyter',     # Exclude if not used
