@@ -34,6 +34,7 @@ All dependencies are listed in `requirements.txt`:
 - ruamel.yaml (YAML processing)
 - cerberus (validation)
 - pandastable (table display)
+- matplotlib (required by pandastable)
 - keyboard (keyboard hooks)
 - psutil (system utilities)
 - pytsk3 (file system analysis)
@@ -361,10 +362,11 @@ hiddenimports=[
 **Exclude Large Unused Packages**
 ```python
 excludes=[
-    'matplotlib',
+    # NOTE: Do NOT exclude matplotlib - it's required by pandastable
     'scipy',
-    'test',
-    'unittest',
+    'IPython',
+    'jupyter',
+    'notebook',
 ],
 ```
 

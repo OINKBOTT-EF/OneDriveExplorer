@@ -212,7 +212,6 @@ if "%1"=="onefile" (
         --hidden-import=ode.views.collaboration_report ^
         --hidden-import=ode.views.sync_status_dashboard ^
         --hidden-import=ode.views.file_analytics ^
-        --exclude-module=matplotlib ^
         --exclude-module=scipy ^
         --noconfirm ^
         "OneDriveExplorer\OneDriveExplorer_GUI.py"
@@ -242,7 +241,6 @@ if "%1"=="onefile" (
             --hidden-import=ode.views.collaboration_report ^
             --hidden-import=ode.views.sync_status_dashboard ^
             --hidden-import=ode.views.file_analytics ^
-            --exclude-module=matplotlib ^
             --exclude-module=scipy ^
             --noconfirm ^
             "OneDriveExplorer\OneDriveExplorer_GUI.py"

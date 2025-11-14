@@ -28,6 +28,7 @@ cerberus>=1.3.0
 
 # Table Display
 pandastable>=0.13.0
+matplotlib>=3.5.0  # Required by pandastable.plotting
 
 # Keyboard Hooks
 keyboard>=0.13.5

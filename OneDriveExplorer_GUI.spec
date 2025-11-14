@@ -41,6 +41,8 @@ a = Analysis(
         'pandas',
         'numpy',
         'pandastable',
+        'matplotlib',  # Required by pandastable.plotting
+        'matplotlib.backends.backend_tkagg',  # Required for Tkinter integration
 
         # ODE modules
         'ode.helpers.pandastablepatch',
@@ -48,6 +50,7 @@ a = Analysis(
         'ode.helpers.AnimatedGif',
         'ode.helpers.mft',
         'ode.helpers.structures',
+        'ode.helpers.report_ui_utils',  # Enhanced reporting UI components
 
         # Parsers
         'ode.parsers.dat',
@@ -106,9 +109,11 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'matplotlib',  # Exclude if not used
+        # NOTE: matplotlib is required by pandastable.plotting, do not exclude
         'scipy',       # Exclude if not used
         'IPython',     # Exclude if not used
+        'jupyter',     # Exclude if not used
+        'notebook',    # Exclude if not used
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
