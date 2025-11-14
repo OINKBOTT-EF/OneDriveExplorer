@@ -29,6 +29,10 @@ import pandas as pd
 from pandastable import Table
 import logging
 from collections import Counter
+from ode.helpers.report_ui_utils import (
+    ToolTip, InfoPanel, StatisticCard,
+    format_number
+)
 
 log = logging.getLogger(__name__)
 
@@ -84,6 +88,7 @@ class CollaborationReportFrame(ttk.Frame):
         export_btn = ttk.Button(self.status_frame, text="Export Report (CSV)",
                                command=self.export_report)
         export_btn.pack(side=tk.RIGHT, padx=5)
+        ToolTip(export_btn, "Export collaboration report to CSV format")
 
     def analyze_collaboration(self):
         """Analyze collaboration data from all sources"""
@@ -208,24 +213,57 @@ class CollaborationReportFrame(ttk.Frame):
                          font=('Arial', 14, 'bold'))
         title.pack(pady=10)
 
-        # Summary statistics
+        # Info panel
+        info_panel = InfoPanel(
+            scrollable_frame,
+            title="Collaboration Report",
+            message="Analysis of file creators, modifiers, and sharing patterns in your OneDrive data.",
+            type="info",
+            details="View who created files, who modified them, top collaborators, and shared file statistics. This helps identify collaboration patterns and file ownership in forensic investigations."
+        )
+        info_panel.pack(fill=tk.X, padx=20, pady=(0, 10))
+
+        # Summary statistics using StatisticCard
         summary_frame = ttk.LabelFrame(scrollable_frame, text="Summary Statistics", padding=15)
         summary_frame.pack(fill=tk.X, padx=20, pady=10)
 
         stats_grid = ttk.Frame(summary_frame)
         stats_grid.pack(fill=tk.X)
 
-        stats_data = [
-            ("Total Shared Files:", self.stats['total_shared_files']),
-            ("Unique Creators:", self.stats['total_creators']),
-            ("Unique Modifiers:", self.stats['total_modifiers']),
-        ]
+        # Row 1: Shared files, creators, modifiers
+        card1 = StatisticCard(
+            stats_grid,
+            title="Shared Files",
+            value=format_number(self.stats['total_shared_files']),
+            subtitle="Files shared with others",
+            icon="🔗"
+        )
+        card1.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
+        ToolTip(card1, "Total number of files shared with other users")
 
-        for i, (label, value) in enumerate(stats_data):
-            ttk.Label(stats_grid, text=label, font=('Arial', 10, 'bold')).grid(
-                row=i, column=0, sticky='w', padx=10, pady=5)
-            ttk.Label(stats_grid, text=str(value), font=('Arial', 10)).grid(
-                row=i, column=1, sticky='w', padx=10, pady=5)
+        card2 = StatisticCard(
+            stats_grid,
+            title="Unique Creators",
+            value=format_number(self.stats['total_creators']),
+            subtitle="File creators identified",
+            icon="👤"
+        )
+        card2.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
+        ToolTip(card2, "Number of different users who created files")
+
+        card3 = StatisticCard(
+            stats_grid,
+            title="Unique Modifiers",
+            value=format_number(self.stats['total_modifiers']),
+            subtitle="File modifiers identified",
+            icon="✏️"
+        )
+        card3.grid(row=0, column=2, padx=5, pady=5, sticky='ew')
+        ToolTip(card3, "Number of different users who modified files")
+
+        # Configure grid columns
+        for i in range(3):
+            stats_grid.grid_columnconfigure(i, weight=1)
 
         # Top Creators section
         if self.stats['top_creators']:

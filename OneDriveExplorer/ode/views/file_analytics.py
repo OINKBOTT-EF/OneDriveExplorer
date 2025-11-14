@@ -30,6 +30,10 @@ from pandastable import Table
 import logging
 from collections import Counter
 import os
+from ode.helpers.report_ui_utils import (
+    ToolTip, InfoPanel, StatisticCard,
+    format_number, format_bytes, format_percentage
+)
 
 log = logging.getLogger(__name__)
 
@@ -87,6 +91,7 @@ class FileAnalyticsFrame(ttk.Frame):
         export_btn = ttk.Button(self.status_frame, text="Export Report (CSV)",
                                command=self.export_report)
         export_btn.pack(side=tk.RIGHT, padx=5)
+        ToolTip(export_btn, "Export file analytics report to CSV format")
 
     def parse_size(self, size_str):
         """Convert size string (e.g., '1,234 KB') to integer KB"""
@@ -235,27 +240,92 @@ class FileAnalyticsFrame(ttk.Frame):
                          font=('Arial', 14, 'bold'))
         title.pack(pady=10)
 
-        # Summary statistics
+        # Info panel
+        info_panel = InfoPanel(
+            scrollable_frame,
+            title="File Analytics Dashboard",
+            message="Comprehensive analysis of file sizes, types, and storage patterns in your OneDrive data.",
+            type="info",
+            details="View largest files, file type distribution, recent file activity, Quick Access items, and Microsoft's recommended files. Use the tabs to explore specific analytics."
+        )
+        info_panel.pack(fill=tk.X, padx=20, pady=(0, 10))
+
+        # Summary statistics using StatisticCard
         summary_frame = ttk.LabelFrame(scrollable_frame, text="Storage Statistics", padding=15)
         summary_frame.pack(fill=tk.X, padx=20, pady=10)
 
-        stats_data = [
-            ("Total Files:", self.stats['total_files']),
-            ("Total Storage:", self.stats['total_size_formatted']),
-            ("Average File Size:", self.format_size(self.stats['avg_file_size_kb'])),
-            ("Largest File:", self.format_size(self.stats['largest_file_kb'])),
-            ("Unique File Types:", self.stats['unique_extensions']),
-            ("Most Common Type:", f".{self.stats['most_common_extension'][0]} ({self.stats['most_common_extension'][1]} files)")
-        ]
+        stats_grid = ttk.Frame(summary_frame)
+        stats_grid.pack(fill=tk.X)
 
-        for i, (label, value) in enumerate(stats_data):
-            row = i // 2
-            col = (i % 2) * 2
+        # Row 1: Total files, storage, average size
+        card1 = StatisticCard(
+            stats_grid,
+            title="Total Files",
+            value=format_number(self.stats['total_files']),
+            subtitle="Analyzed files",
+            icon="📄"
+        )
+        card1.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
+        ToolTip(card1, "Total number of files found in OneDrive data")
 
-            ttk.Label(summary_frame, text=label, font=('Arial', 10, 'bold')).grid(
-                row=row, column=col, sticky='w', padx=10, pady=5)
-            ttk.Label(summary_frame, text=str(value), font=('Arial', 10)).grid(
-                row=row, column=col+1, sticky='w', padx=(0, 20), pady=5)
+        total_size_bytes = self.stats['total_size_kb'] * 1024
+        card2 = StatisticCard(
+            stats_grid,
+            title="Total Storage",
+            value=format_bytes(total_size_bytes),
+            subtitle=f"{format_number(self.stats['total_size_kb'])} KB",
+            icon="💾"
+        )
+        card2.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
+        ToolTip(card2, "Total storage used by all files")
+
+        avg_size_bytes = self.stats['avg_file_size_kb'] * 1024
+        card3 = StatisticCard(
+            stats_grid,
+            title="Average File Size",
+            value=format_bytes(avg_size_bytes),
+            subtitle="Per file",
+            icon="📊"
+        )
+        card3.grid(row=0, column=2, padx=5, pady=5, sticky='ew')
+        ToolTip(card3, "Average size across all files")
+
+        # Row 2: Largest file, file types, most common type
+        largest_size_bytes = self.stats['largest_file_kb'] * 1024
+        card4 = StatisticCard(
+            stats_grid,
+            title="Largest File",
+            value=format_bytes(largest_size_bytes),
+            subtitle="Maximum size",
+            icon="🔝"
+        )
+        card4.grid(row=1, column=0, padx=5, pady=5, sticky='ew')
+        ToolTip(card4, "Size of the largest file in OneDrive")
+
+        card5 = StatisticCard(
+            stats_grid,
+            title="File Types",
+            value=format_number(self.stats['unique_extensions']),
+            subtitle="Unique extensions",
+            icon="📑"
+        )
+        card5.grid(row=1, column=1, padx=5, pady=5, sticky='ew')
+        ToolTip(card5, "Number of different file types found")
+
+        most_common_ext, most_common_count = self.stats['most_common_extension']
+        card6 = StatisticCard(
+            stats_grid,
+            title=f"Most Common: .{most_common_ext}",
+            value=format_number(most_common_count),
+            subtitle="Files of this type",
+            icon="⭐"
+        )
+        card6.grid(row=1, column=2, padx=5, pady=5, sticky='ew')
+        ToolTip(card6, f"Most frequently occurring file extension")
+
+        # Configure grid columns
+        for i in range(3):
+            stats_grid.grid_columnconfigure(i, weight=1)
 
         # Top file types by count
         if not self.file_types_df.empty:
